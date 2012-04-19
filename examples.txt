@@ -1,0 +1,22 @@
+<!--parser:xtscript-->
+    
+    include includes.xt
+
+    function calc $a=0; $b=0;
+
+        assign $c = ( $a+$b )
+
+        if $a > 0 or $b > 0
+            call @simple_print $a=$a; $b=$b; $c=$c;
+        else
+            print at least one argument must be greater than null
+        endif
+
+    endfunction
+
+    assign $tmp_a = 1
+    assign $tmp_b = 2
+
+    call calc $a=$tmp_a; $b=$tmp_b;
+
+<!--/parser:xtscript-->

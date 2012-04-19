@@ -1,0 +1,7 @@
+#exportable
+
+function simple_print $a;$b;$c
+
+    print \$a is $a, \$b is $b and sum of them is $c<br />
+
+endfunction
