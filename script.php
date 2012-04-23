@@ -1021,7 +1021,7 @@ class script
 
     private function __str_replace ( $args )
     {
-        if ( !isset ( $args [ '$val' ] ) || !isset ( $args [ '$replace' ] ) || !isset ( $args [ '$search' ] ) )
+        if ( !isset ( $args [ '$subject' ] ) || !isset ( $args [ '$replace' ] ) || !isset ( $args [ '$search' ] ) )
         {
             return '';
         }
@@ -1031,7 +1031,7 @@ class script
 
     private function __str_ireplace ( $args )
     {
-        if ( !isset ( $args [ '$val' ] ) || !isset ( $args [ '$replace' ] ) || !isset ( $args [ '$search' ] ) )
+        if ( !isset ( $args [ '$subject' ] ) || !isset ( $args [ '$replace' ] ) || !isset ( $args [ '$search' ] ) )
         {
             return '';
         }
