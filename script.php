@@ -84,6 +84,15 @@ class script
             //replace comments
             $str = preg_replace ( '#\/\*.+\*\/#s', '', $str );
 
+            //merge multiline strings
+            if ( preg_match_all ( '#\{\{(.+?)\}\}#s', $str, $matches ) && is_array ( $matches [ 0 ] ) && sizeof ( $matches [ 0 ] ) > 0 )
+            {
+                foreach ( $matches [ 0 ] as $key => $val )
+                {
+                    $str = str_replace ( $val, str_replace ( "\n", '\\n', $matches [ 1 ][ $key ] ), $str );
+                }
+            }
+
             $result = array ();
 
             $this -> cmd_list = explode ( "\n", $str );
@@ -93,7 +102,6 @@ class script
                 $this -> cmd_list = explode ( "[br]", $str );
             }
 
-            //foreach ( $list as $line )
             while ( list ( $key, $line ) = each ( $this -> cmd_list ) )
             {
                 if ( self::$started + self::XT_SYNTAX_TIMEOUT < microtime ( true ) )
@@ -105,6 +113,9 @@ class script
 
                 if ( !empty ( $line ) && strpos ( $line, '#' ) !== 0 )
                 { 
+                    //replace back newlines
+                    $line = str_replace ( '\\n', "\n", $line );
+
                     $splited = explode ( ' ', $line, 2 );
                     $cmd = strtolower ( $splited [ 0 ] );
                     $args = array ();
@@ -422,6 +433,9 @@ class script
         elseif ( $cmd == 'include' )
         {
             $fs = X::model ( 'filesystem' );
+            $domain = substr ( $this -> url, 0, strpos ( $this -> url, '/' ) );
+            $domain_path = $fs -> path ( $domain );
+
             $path = $fs -> path ( dirname ( $this -> url ) );
 
             foreach ( $args as $arg )
@@ -432,20 +446,26 @@ class script
                 }
 
                 $p = $fs -> path ( $arg );
+
                 $functions_prefix = '';
                 $check_owner = false;
 
-
+                //Trying to include local file
                 if ( !$p || !isset ( $p [ 'absolute' ] ) )
                 { 
                     $file = realpath ( $path [ 'absolute' ] .'/'. ltrim ( $arg, '/' ) );
+
+                    if ( $file && strpos ( $file, realpath ( $domain_path [ 'absolute' ] ) ) !== 0 )
+                    {
+                        $file = false;
+                    }
                 }
+                //Trying to include other user file
                 else
                 { 
                     $functions_prefix = substr ( $arg, 0, strpos ( $arg, '/' ) );
                     $check_owner = true;
                     $file = realpath ( $p [ 'absolute' ] );
-
                 }
 
                 if ( $file )
@@ -757,6 +777,10 @@ class script
         }
 
         $fs = X::model ( 'filesystem' );
+
+        $domain = substr ( $this -> url, 0, strpos ( $this -> url, '/' ) );
+        $domain_path = $fs -> path ( $domain );
+
         $path = $fs -> path ( dirname ( $this -> url ) );
 
         $file = realpath ( $path [ 'absolute' ] .'/'. ltrim ( $args [ '$file' ], '/' ) );
@@ -764,7 +788,7 @@ class script
         $return = '';
 
         //TODO: remove realpath checks
-        if ( $file && strpos ( $file, realpath ( $path [ 'absolute' ] ) ) === 0 )
+        if ( $file && strpos ( $file, realpath ( $domain_path [ 'absolute' ] ) ) === 0 )
         { 
             $return = file_get_contents ( $file );
 
@@ -785,6 +809,469 @@ class script
         }
 
         return $return;
+    }
+
+    //String functions
+    private function __chr ( $args )
+    {
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        return chr ( $args [ '$val' ] );
+    }
+
+    private function __ord ( $args )
+    {
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        return ord ( $args [ '$val' ] );
+    }
+
+    private function __crc32 ( $args )
+    {
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        return crc32 ( $args [ '$val' ] );
+    }
+
+    private function __md5 ( $args )
+    {
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        return md5 ( $args [ '$val' ] );
+    }
+
+    private function __sha1 ( $args )
+    {
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        return sha1 ( $args [ '$val' ] );
+    }
+
+    private function __base64_encode ( $args )
+    {
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        return base64_encode ( $args [ '$val' ] );
+    }
+
+    private function __base64_decode ( $args )
+    {
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        return base64_decode ( $args [ '$val' ] );
+    }
+
+    private function __bin2hex ( $args )
+    {
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        return bin2hex ( $args [ '$val' ] );
+    }
+
+    private function __hex2bin ( $args )
+    {
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        return hex2bin ( $args [ '$val' ] );
+    }
+
+    private function __htmlspecialchars ( $args )
+    {
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        $flags = ENT_COMPAT | ENT_HTML401;
+
+        if ( isset ( $args [ '$flags' ] ) && defined ( $args [ '$flags' ] ) )
+        {
+            $flags = constant ( $args [ '$flags' ] );
+        }
+
+        return htmlspecialchars ( $args [ '$val' ], common::get_param ( $args [ '$flags' ], null ), common::get_param ( $args [ '$encoding' ], 'UTF-8' ), common::get_param ( $args [ '$double_encode' ], true ) );
+    }
+
+    private function __lcfirst ( $args )
+    {
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        return lcfirst ( $args [ '$val' ] );
+    }
+
+    private function __ucfirst ( $args )
+    {
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        return ucfirst ( $args [ '$val' ] );
+    }
+
+    private function __ucwords ( $args )
+    {
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        return ucwords ( $args [ '$val' ] );
+    }
+
+    private function __strtoupper ( $args )
+    {
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        return strtoupper ( $args [ '$val' ] );
+    }
+
+    private function __strtolower ( $args )
+    {
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        return strtolower ( $args [ '$val' ] );
+    }
+
+    private function __trim ( $args )
+    {
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        return trim ( $args [ '$val' ], common::get_param ( $args [ '$charlist' ], null ) );
+    }
+
+    private function __ltrim ( $args )
+    {
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        return ltrim ( $args [ '$val' ], common::get_param ( $args [ '$charlist' ], null ) );
+    }
+
+    private function __rtrim ( $args )
+    {
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        return rtrim ( $args [ '$val' ], common::get_param ( $args [ '$charlist' ], null ) );
+    }
+
+    private function __nl2br ( $args )
+    {
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        return nl2br ( $args [ '$val' ] );
+    }
+
+    private function __br2nl ( $args )
+    {
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        return str_replace ( array ( '<br>', '<br/>', '<br />' ), array ( "\n", "\n", "\n" ), $args [ '$val' ] );
+    }
+
+    private function __str_replace ( $args )
+    {
+        if ( !isset ( $args [ '$val' ] ) || !isset ( $args [ '$replace' ] ) || !isset ( $args [ '$search' ] ) )
+        {
+            return '';
+        }
+
+        return str_replace ( $args [ '$search' ], $args [ '$replace' ], $args [ '$subject' ] );
+    }
+
+    private function __str_ireplace ( $args )
+    {
+        if ( !isset ( $args [ '$val' ] ) || !isset ( $args [ '$replace' ] ) || !isset ( $args [ '$search' ] ) )
+        {
+            return '';
+        }
+
+        return str_ireplace ( $args [ '$search' ], $args [ '$replace' ], $args [ '$subject' ] );
+    }
+
+    private function __str_pad ( $args )
+    { 
+        if ( !isset ( $args [ '$val' ] ) || !isset ( $args [ '$pad_length' ] ) )
+        {
+            return '';
+        }
+
+        $pad_type = STR_PAD_RIGHT;
+
+        if ( isset ( $args [ '$pad_type' ] ) && defined ( $args [ '$pad_type' ] ) )
+        {
+            $pad_type = constant ( $args [ '$pad_type' ] );
+        }
+
+        return str_pad ( $args [ '$val' ], $args [ '$pad_length' ], common::get_param ( $args [ '$pad_string' ], '' ), $pad_type );
+    }
+
+    private function __str_repeat ( $args )
+    { 
+        if ( !isset ( $args [ '$val' ] ) || !isset ( $args [ '$multiplier' ] ) )
+        {
+            return '';
+        }
+
+        return str_repeat ( $args [ '$val' ], $args [ '$multiplier' ] );
+    }
+
+    private function __str_shuffle ( $args )
+    { 
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        return str_shuffle ( $args [ '$val' ] );
+    }
+
+    private function __strip_tags ( $args )
+    { 
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        return strip_tags ( $args [ '$val' ], common::get_param ( $args [ '$allowable_tags' ], '' ) );
+    }
+
+    private function __addslashes ( $args )
+    { 
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        return addslashes ( $args [ '$val' ] );
+    }
+
+    private function __stripslashes ( $args )
+    { 
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        return stripslashes ( $args [ '$val' ] );
+    }
+
+    private function __strpos ( $args )
+    { 
+        if ( !isset ( $args [ '$haystack' ] ) || !isset ( $args [ '$needle' ] ) )
+        {
+            return '';
+        }
+
+        return strpos ( $args [ '$haystack' ], $args [ '$needle' ], common::get_param ( $args [ '$offset' ], 0 ) );
+    }
+
+    private function __strrpos ( $args )
+    { 
+        if ( !isset ( $args [ '$haystack' ] ) || !isset ( $args [ '$needle' ] ) )
+        {
+            return '';
+        }
+
+        return strrpos ( $args [ '$haystack' ], $args [ '$needle' ], common::get_param ( $args [ '$offset' ], 0 ) );
+    }
+
+    private function __stripos ( $args )
+    { 
+        if ( !isset ( $args [ '$haystack' ] ) || !isset ( $args [ '$needle' ] ) )
+        {
+            return '';
+        }
+
+        return stripos ( $args [ '$haystack' ], $args [ '$needle' ], common::get_param ( $args [ '$offset' ], 0 ) );
+    }
+
+    private function __strripos ( $args )
+    { 
+        if ( !isset ( $args [ '$haystack' ] ) || !isset ( $args [ '$needle' ] ) )
+        {
+            return '';
+        }
+
+        return strripos ( $args [ '$haystack' ], $args [ '$needle' ], common::get_param ( $args [ '$offset' ], 0 ) );
+    }
+
+    private function __strstr ( $args )
+    { 
+        if ( !isset ( $args [ '$haystack' ] ) || !isset ( $args [ '$needle' ] ) )
+        {
+            return '';
+        }
+
+        return strstr ( $args [ '$haystack' ], $args [ '$needle' ], common::get_param ( $args [ '$before_needle' ], false ) );
+    }
+
+    private function __stristr ( $args )
+    { 
+        if ( !isset ( $args [ '$haystack' ] ) || !isset ( $args [ '$needle' ] ) )
+        {
+            return '';
+        }
+
+        return stristr ( $args [ '$haystack' ], $args [ '$needle' ], common::get_param ( $args [ '$before_needle' ], false ) );
+    }
+
+    private function __strrchr ( $args )
+    { 
+        if ( !isset ( $args [ '$haystack' ] ) || !isset ( $args [ '$needle' ] ) )
+        {
+            return '';
+        }
+
+        return strrchr ( $args [ '$haystack' ], $args [ '$needle' ], common::get_param ( $args [ '$before_needle' ], false ) );
+    }
+
+    private function __strrev ( $args )
+    { 
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        return strrev ( $args [ '$val' ] );
+    }
+
+    private function __substr ( $args )
+    { 
+        if ( !isset ( $args [ '$val' ] ) || !isset ( $args [ '$start' ] ) )
+        {
+            return '';
+        }
+
+        return substr ( $args [ '$val' ], $args [ '$start' ], common::get_param ( $args [ '$length' ], null ) );
+    }
+
+    //Math
+    private function __abs ( $args )
+    {
+        if ( !isset ( $args [ '$num' ] ) )
+        {
+            return '';
+        }
+
+        return abs ( $args [ '$num' ] );
+    }
+
+    private function __ceil ( $args )
+    {
+        if ( !isset ( $args [ '$num' ] ) )
+        {
+            return '';
+        }
+
+        return ceil ( $args [ '$num' ] );
+    }
+
+    private function __floor ( $args )
+    {
+        if ( !isset ( $args [ '$num' ] ) )
+        {
+            return '';
+        }
+
+        return floor ( $args [ '$num' ] );
+    }
+
+    private function __round ( $args )
+    {
+        if ( !isset ( $args [ '$num' ] ) )
+        {
+            return '';
+        }
+
+        $mode = PHP_ROUND_HALF_UP;
+
+        if ( isset ( $args [ '$mode' ] ) && defined ( $args [ '$mode' ] ) )
+        {
+            $mode = constant ( $args [ '$mode' ] );
+        }
+
+        return round ( $args [ '$num' ], common::get_param ( $args [ '$precision' ], 0 ), $mode );
+    }
+
+    private function __mt_rand ( $args )
+    {
+        return mt_rand ( common::get_param ( $args [ '$min' ], null ), common::get_param ( $args [ '$max' ], null ) );
+    }
+
+    private function __pi ( $args )
+    {
+        return pi ();
+    }
+
+    private function __pow ( $args )
+    {
+        if ( !isset ( $args [ '$num' ] ) || !isset ( $args [ '$exp' ] ) )
+        {
+            return '';
+        }
+
+        return round ( $args [ '$num' ], $args [ '$exp' ] );
+    }
+
+    private function __sqrt ( $args )
+    {
+        if ( !isset ( $args [ '$num' ] ) )
+        {
+            return '';
+        }
+
+        return sqrt ( $args [ '$num' ] );
     }
 }
 
