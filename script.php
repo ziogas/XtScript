@@ -955,7 +955,7 @@ class script
             $flags = constant ( $args [ '$flags' ] );
         }
 
-        return htmlspecialchars ( $args [ '$val' ], common::get_param ( $args [ '$flags' ], null ), common::get_param ( $args [ '$encoding' ], 'UTF-8' ), common::get_param ( $args [ '$double_encode' ], true ) );
+        return htmlspecialchars ( $args [ '$val' ], $flags, common::get_param ( $args [ '$encoding' ], 'UTF-8' ), common::get_param ( $args [ '$double_encode' ], true ) );
     }
 
     private function __lcfirst ( $args )
