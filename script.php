@@ -899,8 +899,47 @@ class script
             return '';
         }
 
-        return hex2bin ( $args [ '$val' ] );
+        if ( !function_exists ( 'hex2bin' ) )
+        { 
+            $len = strlen ( $args [ '$val' ] );
+            $bin = '';
+            $i = 0;
+
+            do 
+            {
+                $bin .= chr ( hexdec ( $args [ '$val' ]{$i} . $args [ '$val' ]{( $i + 1 )} ) );
+                $i += 2;
+            } 
+            while ( $i < $len );
+
+            return $bin;
+        }
+        else
+        { 
+            return hex2bin ( $args [ '$val' ] );
+        }
     }
+
+    private function __hexdec ( $args )
+    {
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        return hexdec ( $args [ '$val' ] );
+    }
+
+    private function __dechex ( $args )
+    {
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        return dechex ( $args [ '$val' ] );
+    }
+
 
     private function __htmlspecialchars ( $args )
     {
@@ -909,7 +948,7 @@ class script
             return '';
         }
 
-        $flags = ENT_COMPAT | ENT_HTML401;
+        $flags = defined ( 'ENT_HTML401' ) ? ENT_COMPAT | ENT_HTML401 : ENT_COMPAT;
 
         if ( isset ( $args [ '$flags' ] ) && defined ( $args [ '$flags' ] ) )
         {
@@ -1053,7 +1092,7 @@ class script
             $pad_type = constant ( $args [ '$pad_type' ] );
         }
 
-        return str_pad ( $args [ '$val' ], $args [ '$pad_length' ], common::get_param ( $args [ '$pad_string' ], '' ), $pad_type );
+        return str_pad ( $args [ '$val' ], $args [ '$pad_length' ], common::get_param ( $args [ '$pad_string' ], ' ' ), $pad_type );
     }
 
     private function __str_repeat ( $args )
@@ -1173,7 +1212,7 @@ class script
             return '';
         }
 
-        return strrchr ( $args [ '$haystack' ], $args [ '$needle' ], common::get_param ( $args [ '$before_needle' ], false ) );
+        return strrchr ( $args [ '$haystack' ], $args [ '$needle' ] );
     }
 
     private function __strrev ( $args )
@@ -1261,7 +1300,7 @@ class script
             return '';
         }
 
-        return round ( $args [ '$num' ], $args [ '$exp' ] );
+        return pow ( $args [ '$num' ], $args [ '$exp' ] );
     }
 
     private function __sqrt ( $args )
