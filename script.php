@@ -1015,7 +1015,7 @@ class script
             return '';
         }
 
-        return trim ( $args [ '$val' ], common::get_param ( $args [ '$charlist' ], null ) );
+        return trim ( $args [ '$val' ], common::get_param ( $args [ '$charlist' ], " \t\n\r\0\0B" ) );
     }
 
     private function __ltrim ( $args )
@@ -1025,7 +1025,7 @@ class script
             return '';
         }
 
-        return ltrim ( $args [ '$val' ], common::get_param ( $args [ '$charlist' ], null ) );
+        return ltrim ( $args [ '$val' ], common::get_param ( $args [ '$charlist' ], " \t\n\r\0\0B" ) );
     }
 
     private function __rtrim ( $args )
@@ -1035,7 +1035,7 @@ class script
             return '';
         }
 
-        return rtrim ( $args [ '$val' ], common::get_param ( $args [ '$charlist' ], null ) );
+        return rtrim ( $args [ '$val' ], common::get_param ( $args [ '$charlist' ], " \t\n\r\0\0B" ) );
     }
 
     private function __nl2br ( $args )
