@@ -606,7 +606,11 @@ class script
                 foreach ( $matches [ 0 ] as $match )
                 {
                     $res = $this -> eval_math ( substr ( $match, 1, -1 ) );
-                    $result = preg_replace ( '#'. preg_quote ( $match ) .'#', $res, $result, 1 );
+
+                    if ( $res )
+                    { 
+                        $result = preg_replace ( '#'. preg_quote ( $match ) .'#', $res, $result, 1 );
+                    }
                 }
             }
         }
@@ -617,6 +621,23 @@ class script
     private function eval_math ( $code )
     {
         $operators = array ( '+', '-', '/', '*', '%' );
+
+        $is_math_operation = false;
+
+        foreach ( $operators as $operator )
+        {
+            if ( strpos ( $code, $operator ) !== false )
+            {
+                $is_math_operation = true;
+                break;
+            }
+        }
+
+        if ( !$is_math_operation )
+        {
+            return false;
+        }
+
         $init = false;
         $return = 0;
 
