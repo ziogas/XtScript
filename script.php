@@ -1266,26 +1266,6 @@ class script
         return function_exists ( 'mb_strlen' ) ? mb_strlen ( $args [ '$val' ] ) : strlen ( $args [ '$val' ] );
     }
 
-    private function __strpos ( $args )
-    {
-        if ( !isset ( $args [ '$haystack' ] ) || !isset ( $args [ '$needle' ] ) )
-        {
-            return '';
-        }
-
-        return function_exists ( 'mb_strpos' ) ? mb_strpos ( $args [ '$haystack' ], $args [ '$needle' ] ) : strpos ( $args [ '$haystack' ], $args [ '$needle' ] );
-    }
-
-    private function __strstr ( $args )
-    {
-        if ( !isset ( $args [ '$haystack' ] ) || !isset ( $args [ '$needle' ] ) )
-        {
-            return '';
-        }
-
-        return function_exists ( 'mb_strstr' ) ? mb_strstr ( $args [ '$haystack' ], $args [ '$needle' ] ) : strstr ( $args [ '$haystack' ], $args [ '$needle' ] );
-    }
-
     //Math
     private function __abs ( $args )
     {
