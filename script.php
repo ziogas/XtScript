@@ -1016,7 +1016,7 @@ class script
             return '';
         }
 
-        return strtoupper ( $args [ '$val' ] );
+        return function_exists ( 'mb_strtoupper' ) ? mb_strtoupper ( $args [ '$val' ] ) : strtoupper ( $args [ '$val' ] );
     }
 
     private function __strtolower ( $args )
@@ -1026,7 +1026,7 @@ class script
             return '';
         }
 
-        return strtolower ( $args [ '$val' ] );
+        return function_exists ( 'mb_strtolower' ) ? mb_strtolower ( $args [ '$val' ] ) : strtolower ( $args [ '$val' ] );
     }
 
     private function __trim ( $args )
@@ -1254,6 +1254,36 @@ class script
         }
 
         return substr ( $args [ '$val' ], $args [ '$start' ], common::get_param ( $args [ '$length' ], null ) );
+    }
+
+    private function __strlen ( $args )
+    {
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        return function_exists ( 'mb_strlen' ) ? mb_strlen ( $args [ '$val' ] ) : strlen ( $args [ '$val' ] );
+    }
+
+    private function __strpos ( $args )
+    {
+        if ( !isset ( $args [ '$haystack' ] ) || !isset ( $args [ '$needle' ] ) )
+        {
+            return '';
+        }
+
+        return function_exists ( 'mb_strpos' ) ? mb_strpos ( $args [ '$haystack' ], $args [ '$needle' ] ) : strpos ( $args [ '$haystack' ], $args [ '$needle' ] );
+    }
+
+    private function __strstr ( $args )
+    {
+        if ( !isset ( $args [ '$haystack' ] ) || !isset ( $args [ '$needle' ] ) )
+        {
+            return '';
+        }
+
+        return function_exists ( 'mb_strstr' ) ? mb_strstr ( $args [ '$haystack' ], $args [ '$needle' ] ) : strstr ( $args [ '$haystack' ], $args [ '$needle' ] );
     }
 
     //Math
