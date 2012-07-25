@@ -453,7 +453,16 @@ class script
                 //Trying to include local file
                 if ( !$p || !isset ( $p [ 'absolute' ] ) )
                 { 
-                    $file = realpath ( $path [ 'absolute' ] .'/'. ltrim ( $arg, '/' ) );
+                    //obsolute url
+                    if ( strpos ( $arg, '/' ) === 0 )
+                    { 
+                        $file = realpath ( $domain_path [ 'absolute' ] .'/'. $arg );
+                    }
+                    //relative url
+                    else
+                    { 
+                        $file = realpath ( $path [ 'absolute' ] .'/'. $arg );
+                    }
 
                     if ( $file && strpos ( $file, realpath ( $domain_path [ 'absolute' ] ) ) !== 0 )
                     {
@@ -679,7 +688,10 @@ class script
                 }
                 elseif ( $op == '%' )
                 { 
-                    $return %= $split [ 0 ];
+                    if ( $split [ 0 ] != 0 )
+                    { 
+                        $return %= $split [ 0 ];
+                    }
                 }
             }
         }
