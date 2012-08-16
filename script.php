@@ -26,11 +26,14 @@ class script
     const XT_SYNTAX_IF_SKIP = 6;
 
     //seconds
-    const XT_SYNTAX_TIMEOUT = 2;
+    const XT_SYNTAX_TIMEOUT = 4;
 
     private $url, $vars, $info, $version;
     private $xt_syntax_state = array ( self::XT_SYNTAX_NONE );
     private $xt_syntax_functions = array ();
+    
+    private $xt_syntax_plugins_directory = './xtscript_plugins';
+    private $xt_syntax_plugins = array ();
 
     private static $started = null;
 
@@ -40,6 +43,13 @@ class script
         {
             $this -> setup ( $url, $info, $vars, $syntax_functions );
         }
+
+        if ( strpos ( $this -> xt_syntax_plugins_directory , '/' ) !== 0 )
+        {
+            $this -> xt_syntax_plugins_directory = realpath ( dirname ( __FILE__ ) .'/'. $this -> xt_syntax_plugins_directory );
+        }
+
+        $this -> xt_syntax_plugins_directory = rtrim ( $this -> xt_syntax_plugins_directory ) .'/';
     }
 
     public function setup ( $url, $info, &$vars, &$syntax_functions = false )
@@ -704,6 +714,39 @@ class script
         $method = '__'. $function;
         $result = '';
 
+        if ( strpos ( $function, '::' ) !== false )
+        {
+            list ( $class, $class_method ) = explode ( '::', $function, 2 );
+
+            if ( !isset ( $this -> xt_syntax_plugins [ $class ] ) || $this -> xt_syntax_plugins [ $class ] )
+            {
+                if ( !isset ( $this -> xt_syntax_plugins [ $class ] ) )
+                {
+                    if ( file_exists ( $this -> xt_syntax_plugins_directory .'xt_'. $class .'.php' ) )
+                    {
+                        require ( $this -> xt_syntax_plugins_directory .'xt_'. $class .'.php' );
+
+                        if ( class_exists ( 'xt_'. $class ) )
+                        { 
+                            $this -> xt_syntax_plugins [ $class ] = true;
+
+                            if ( method_exists ( 'xt_'. $class, '__setup' ) && is_callable ( array ( 'xt_'. $class, '__setup' ) ) )
+                            {
+                                call_user_func ( array ( 'xt_'. $class, '__setup' ), $this -> url, $this -> info  );
+                            }
+                        }
+                    }
+                }
+
+                foreach ( $args as $key => $val )
+                {
+                    $args [ $key ] = $this -> eval_vars ( $val );
+                }
+
+                return call_user_func ( array ( 'xt_'. $class, $class_method ), $args );
+            }
+        }
+
         if ( method_exists ( $this, $method ) )
         {
             foreach ( $args as $key => $val )
@@ -1265,7 +1308,12 @@ class script
             return '';
         }
 
-        return substr ( $args [ '$val' ], $args [ '$start' ], common::get_param ( $args [ '$length' ], null ) );
+        if ( isset ( $args [ '$length' ] ) )
+        {
+            $args [ '$length' ] = ( int ) $args [ '$length' ];
+        }
+
+        return substr ( $args [ '$val' ], ( int ) $args [ '$start' ], common::get_param ( $args [ '$length' ], null ) );
     }
 
     private function __strlen ( $args )

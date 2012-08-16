@@ -19,4 +19,13 @@
 
     call calc $a=$tmp_a; $b=$tmp_b;
 
+    assign $line = call str_repeat $val=-;$multiplier=20
+    print $line<br />
+
+    #will not work here because it will try to set cookie on domain test.xtgem.com!
+    call cookie::set $name=foo; $val=bar 
+    
+    assign $x = call cookie::get $name=foo; $default=no cookie yet
+    print $x<br />
+
 <!--/parser:xtscript-->
