@@ -40,9 +40,31 @@ class xt_cookie
         }
     }
 
+    public static function delete ( $args )
+    {
+        if ( !isset ( $args [ '$name' ] ) || empty ( $args [ '$name' ] ) )
+        { 
+            return '';
+        }
+
+        $path = isset ( $args [ '$path' ] ) ? $args [ 'path' ] : '/';
+
+        $domain = null;
+        if ( self::$url )
+        {
+            list ( $domain, ) = explode ( '/', self::$url, 2 );
+        }
+
+        setcookie ( $args [ '$name' ], '', (time ()-86400), $path, $domain );
+
+        if ( isset ( $args [ '$force_current' ] ) && !empty ( $args [ '$force_current' ] ) && isset ( $_COOKIE [ $args [ '$name' ] ] ) )
+        {
+            unset ( $_COOKIE [ $args [ '$name' ] ] );
+        }
+    }
+
     public static function get ( $args )
     {
-
         if ( !isset ( $args [ '$name' ] ) || empty ( $args [ '$name' ] ) )
         { 
             return '';
