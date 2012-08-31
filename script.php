@@ -324,7 +324,7 @@ class script
         {
             $new_state = self::XT_SYNTAX_IF_FALSE;
 
-            $operators = array ( '>=', '<=', '>', '<', '==' );
+            $operators = array ( '>=', '<=', '>', '<', '===', '!==', '==', '!=' );
 
             //TODO: "AND" implementation
             $ors = explode ( 'or', $args [ 0 ] );
@@ -585,6 +585,18 @@ class script
             { 
                 return ( bool ) ( $arg1 == $arg2 );
             }
+            elseif ( $operator === '===' )
+            { 
+                return ( bool ) ( $arg1 == $arg2 );
+            }
+            elseif ( $operator === '!=' )
+            { 
+                return ( bool ) ( $arg1 != $arg2 );
+            }
+            elseif ( $operator === '!==' )
+            { 
+                return ( bool ) ( $arg1 !== $arg2 );
+            }
             elseif ( $operator === '>=' )
             { 
                 return ( bool ) ( $arg1 >= $arg2 );
@@ -611,7 +623,7 @@ class script
                 foreach ( $vars [ 0 ] as $var )
                 {
                     $res = isset ( $this -> vars [ $var ] ) ? $this -> vars [ $var ] : '';
-                    $result = preg_replace ( '#'. preg_quote ( $var ) .'#', $res, $result, 1 );
+                    $result = preg_replace ( '#'. preg_quote ( $var, '#' ) .'#', $res, $result, 1 );
                 }
             }
         }
@@ -628,7 +640,7 @@ class script
 
                     if ( $res )
                     { 
-                        $result = preg_replace ( '#'. preg_quote ( $match ) .'#', $res, $result, 1 );
+                        $result = preg_replace ( '#'. preg_quote ( $match, '#' ) .'#', $res, $result, 1 );
                     }
                 }
             }
@@ -838,6 +850,46 @@ class script
     private function __execution_time ( $args )
     {
         return number_format ( ( ( microtime ( true ) - self::$started ) / 1000 ) , 6, '.', '' ) .'s.';
+    }
+
+    private function __urlencode ( $args )
+    {
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        return urlencode ( $args [ '$val' ] );
+    }
+
+    private function __urldecode ( $args )
+    {
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        return urldecode ( $args [ '$val' ] );
+    }
+
+    private function __rawurlencode ( $args )
+    {
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        return rawurlencode ( $args [ '$val' ] );
+    }
+
+    private function __rawurldecode ( $args )
+    {
+        if ( !isset ( $args [ '$val' ] ) )
+        {
+            return '';
+        }
+
+        return rawurldecode ( $args [ '$val' ] );
     }
 
     private function __source ( $args )
@@ -1228,7 +1280,14 @@ class script
             return '';
         }
 
-        return strpos ( $args [ '$haystack' ], $args [ '$needle' ], common::get_param ( $args [ '$offset' ], 0 ) );
+        $offset = ( int ) common::get_param ( $args [ '$offset' ], 0 );
+
+        if ( $offset > strlen ( $args [ '$haystack' ] ) )
+        {
+            $offset = 0;
+        }
+
+        return strpos ( ( string ) $args [ '$haystack' ], ( string ) $args [ '$needle' ], $offset );
     }
 
     private function __strrpos ( $args )
@@ -1238,7 +1297,14 @@ class script
             return '';
         }
 
-        return strrpos ( $args [ '$haystack' ], $args [ '$needle' ], common::get_param ( $args [ '$offset' ], 0 ) );
+        $offset = ( int ) common::get_param ( $args [ '$offset' ], 0 );
+
+        if ( $offset > strlen ( $args [ '$haystack' ] ) )
+        {
+            $offset = 0;
+        }
+
+        return strrpos ( ( string ) $args [ '$haystack' ], ( string ) $args [ '$needle' ], $offset );
     }
 
     private function __stripos ( $args )
@@ -1248,7 +1314,14 @@ class script
             return '';
         }
 
-        return stripos ( $args [ '$haystack' ], $args [ '$needle' ], common::get_param ( $args [ '$offset' ], 0 ) );
+        $offset = ( int ) common::get_param ( $args [ '$offset' ], 0 );
+
+        if ( $offset > strlen ( $args [ '$haystack' ] ) )
+        {
+            $offset = 0;
+        }
+
+        return stripos ( ( string ) $args [ '$haystack' ], ( string ) $args [ '$needle' ], $offset );
     }
 
     private function __strripos ( $args )
@@ -1258,7 +1331,14 @@ class script
             return '';
         }
 
-        return strripos ( $args [ '$haystack' ], $args [ '$needle' ], common::get_param ( $args [ '$offset' ], 0 ) );
+        $offset = ( int ) common::get_param ( $args [ '$offset' ], 0 );
+
+        if ( $offset > strlen ( $args [ '$haystack' ] ) )
+        {
+            $offset = 0;
+        }
+
+        return strripos ( ( string ) $args [ '$haystack' ], ( string ) $args [ '$needle' ], $offset );
     }
 
     private function __strstr ( $args )
@@ -1268,7 +1348,7 @@ class script
             return '';
         }
 
-        return strstr ( $args [ '$haystack' ], $args [ '$needle' ], common::get_param ( $args [ '$before_needle' ], false ) );
+        return strstr ( ( string ) $args [ '$haystack' ], ( string ) $args [ '$needle' ], common::get_param ( $args [ '$before_needle' ], false ) );
     }
 
     private function __stristr ( $args )
@@ -1278,7 +1358,7 @@ class script
             return '';
         }
 
-        return stristr ( $args [ '$haystack' ], $args [ '$needle' ], common::get_param ( $args [ '$before_needle' ], false ) );
+        return stristr ( ( string ) $args [ '$haystack' ], ( string ) $args [ '$needle' ], common::get_param ( $args [ '$before_needle' ], false ) );
     }
 
     private function __strrchr ( $args )
@@ -1288,7 +1368,7 @@ class script
             return '';
         }
 
-        return strrchr ( $args [ '$haystack' ], $args [ '$needle' ] );
+        return strrchr ( ( string ) $args [ '$haystack' ], ( string ) $args [ '$needle' ] );
     }
 
     private function __strrev ( $args )
@@ -1298,7 +1378,7 @@ class script
             return '';
         }
 
-        return strrev ( $args [ '$val' ] );
+        return strrev ( ( string ) $args [ '$val' ] );
     }
 
     private function __substr ( $args )
@@ -1313,7 +1393,7 @@ class script
             $args [ '$length' ] = ( int ) $args [ '$length' ];
         }
 
-        return substr ( $args [ '$val' ], ( int ) $args [ '$start' ], common::get_param ( $args [ '$length' ], null ) );
+        return substr ( ( string ) $args [ '$val' ], ( int ) $args [ '$start' ], common::get_param ( $args [ '$length' ], null ) );
     }
 
     private function __strlen ( $args )
