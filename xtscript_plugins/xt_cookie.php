@@ -24,7 +24,7 @@ class xt_cookie
             $expire = time () + $args [ '$expire' ];
         }
 
-        $path = isset ( $args [ '$path' ] ) ? $args [ 'path' ] : '/';
+        $path = isset ( $args [ '$path' ] ) ? $args [ '$path' ] : '/';
 
         $domain = null;
         if ( self::$url )
