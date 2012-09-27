@@ -403,6 +403,12 @@ class script
                 return '';
             }
         }
+        //must be true because we cached false on 'if'
+        elseif ( $cmd == 'elseif' )
+        {
+            $this -> syntax_set_state ( self::XT_SYNTAX_IF_SKIP );
+            return '';
+        }
         elseif ( $cmd == 'endif' && ( $__state == self::XT_SYNTAX_IF_TRUE || $__state == self::XT_SYNTAX_IF_FALSE ) )
         {
             $this -> syntax_pop_state ();
