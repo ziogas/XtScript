@@ -2,7 +2,7 @@
 
 register_shutdown_function ( 'HandleXtScriptShutdown' );
 
-function HandleXtScriptShutdown () 
+function HandleXtScriptShutdown ()
 {
     $error = error_get_last ();
 
@@ -15,8 +15,8 @@ function HandleXtScriptShutdown ()
     }
 }
 
-class script 
-{ 
+class script
+{
     const XT_SYNTAX_NONE = 0;
     const XT_SYNTAX_FUNCTION = 1;
     const XT_SYNTAX_FUNCTION_IGNORE = 2;
@@ -30,10 +30,12 @@ class script
 
     private $url, $vars, $info, $version;
     private $xt_syntax_state = array ( self::XT_SYNTAX_NONE );
-    private $xt_syntax_functions = array ();
-    
+    private $xt_syntax_functions = array (),
+            $xt_syntax_indexes = array ();
+
     private $xt_syntax_plugins_directory = './xtscript_plugins';
     private $xt_syntax_plugins = array ();
+
 
     private static $started = null;
 
@@ -53,7 +55,7 @@ class script
     }
 
     public function setup ( $url, $info, &$vars, &$syntax_functions = false )
-    { 
+    {
         $this -> vars = &$vars;
         $this -> url = $url;
         $this -> info = $info;
@@ -62,11 +64,11 @@ class script
         $this -> cmd_list = array ();
 
         if ( $syntax_functions !== false )
-        { 
+        {
             $this -> xt_syntax_functions = &$syntax_functions;
         }
         else
-        { 
+        {
             $this -> xt_syntax_functions = array ();
         }
 
@@ -81,7 +83,7 @@ class script
     public function eval_syntax ( $str, $version )
     {
         if ( is_null ( self::$started ) )
-        { 
+        {
             self::$started = microtime ( true );
         }
 
@@ -92,7 +94,7 @@ class script
         if ( $version == 1 )
         {
             //replace comments
-            $str = preg_replace ( '#\/\*.+\*\/#s', '', $str );
+            $str = preg_replace ( '#\/\*.+?\*\/#s', '', $str );
 
             //merge multiline strings
             if ( preg_match_all ( '#\{\{(.+?)\}\}#s', $str, $matches ) && is_array ( $matches [ 0 ] ) && sizeof ( $matches [ 0 ] ) > 0 )
@@ -112,6 +114,8 @@ class script
                 $this -> cmd_list = explode ( "[br]", $str );
             }
 
+            $this -> build_indexes ();
+
             while ( list ( $key, $line ) = each ( $this -> cmd_list ) )
             {
                 if ( self::$started + self::XT_SYNTAX_TIMEOUT < microtime ( true ) )
@@ -122,7 +126,7 @@ class script
                 $line = trim ( trim ( $line ), ';' );
 
                 if ( !empty ( $line ) && strpos ( $line, '#' ) !== 0 )
-                { 
+                {
                     //replace back newlines
                     $line = str_replace ( '\\n', "\n", $line );
 
@@ -140,7 +144,7 @@ class script
                         $args = array_map ( 'trim', $args );
                     }
                     elseif ( $cmd == 'call' || $cmd == 'function' )
-                    { 
+                    {
                         $splited = explode ( ' ', $splited [ 1 ], 2 );
                         $function = $splited [ 0 ];
 
@@ -149,14 +153,14 @@ class script
                             $aargs = array ();
                         }
                         else
-                        { 
+                        {
                             $aargs = explode ( ';', $splited [ 1 ] );
                         }
 
                         $args = array ( $function );
 
                         if ( sizeof ( $aargs ) > 0 )
-                        { 
+                        {
                             foreach ( $aargs as $aarg )
                             {
                                 $aarg = trim ( $aarg );
@@ -167,7 +171,7 @@ class script
                         }
                     }
                     elseif ( isset ( $splited [ 1 ] ) )
-                    { 
+                    {
                         $args = $splited [ 1 ];
                     }
 
@@ -181,6 +185,25 @@ class script
         return '';
     }
 
+    private function build_indexes ()
+    {
+        foreach ( $this -> cmd_list as $key => $line )
+        {
+            $line = trim ( trim ( $line ), ';' );
+            if ( strpos ( $line, '@' ) === 0 )
+            {
+                $this -> xt_syntax_indexes [ $line ] = $key;
+            }
+        }
+
+        reset ( $this -> cmd_list );
+    }
+
+    private function get_index ( $mark )
+    {
+        return ( isset ( $this -> xt_syntax_indexes [ $mark ] ) ? $this -> xt_syntax_indexes [ $mark ] : false );
+    }
+
     private function eval_cmd ( $cmd, $args )
     {
         if ( !is_array ( $args ) )
@@ -192,7 +215,7 @@ class script
         $__state = $this -> syntax_get_state ();
 
         if ( $cmd == 'endfunction' && ( $__state == self::XT_SYNTAX_FUNCTION || $__state == self::XT_SYNTAX_FUNCTION_IGNORE ) )
-        { 
+        {
             $this -> syntax_pop_state ();
             return '';
         }
@@ -203,12 +226,12 @@ class script
             $function = key ( $this -> xt_syntax_functions );
 
             if ( isset ( $this -> xt_syntax_functions [ $function ][ 'code' ] ) )
-            { 
+            {
                 prev ( $this -> cmd_list );
                 $this -> xt_syntax_functions [ $function ][ 'code' ] .= trim ( current ( $this -> cmd_list ) ) ."\n";
                 next ( $this -> cmd_list );
             }
-            
+
             return '';
         }
 
@@ -241,16 +264,16 @@ class script
         if ( $cmd == 'assign' || $cmd == 'var' )
         {
             if ( sizeof ( $args ) === 2 )
-            { 
+            {
                 if ( substr ( $args [ 1 ], 0, 4 ) == '<xt:' )
-                { 
+                {
                     $args [ 1 ] = $this -> eval_vars ( $args [ 1 ] );
                     $args [ 1 ] = content_model::parse_xt ( $args [ 1 ], $this -> url, $this -> info );
 
                     $this -> vars [ $args [ 0 ] ] = $this -> eval_vars ( $args [ 1 ] );
                 }
                 elseif ( strpos ( $args [ 1 ], 'call ' ) === 0 )
-                { 
+                {
                     $splited = explode ( ' ', substr ( $args [ 1 ], 5 ), 2 );
                     $function = $splited [ 0 ];
 
@@ -259,14 +282,14 @@ class script
                         $aargs = array ();
                     }
                     else
-                    { 
+                    {
                         $aargs = explode ( ';', $splited [ 1 ] );
                     }
 
                     $vars = array ();
 
                     if ( sizeof ( $aargs ) > 0 )
-                    { 
+                    {
                         foreach ( $aargs as $aarg )
                         {
                             $aarg = trim ( $aarg );
@@ -275,11 +298,11 @@ class script
                             $vars [ $tmp [ 0 ] ] = common::get_param ( $tmp [ 1 ], '' );
                         }
                     }
-                    
+
                     $this -> vars [ $args [ 0 ] ] = $this -> eval_function ( $function, $vars );
                 }
                 else
-                { 
+                {
                     $this -> vars [ $args [ 0 ] ] = $this -> eval_vars ( $args [ 1 ] );
                 }
 
@@ -296,12 +319,28 @@ class script
                 $this -> vars [ '$'. $args [ 0 ] ] = common::get_param ( $this -> vars [ $args [ 0 ] ], '' );
             }
         }
+        elseif ( $cmd == 'get_or_default' )
+        {
+            if ( isset ( $args [ 0 ] ) )
+            {
+                $aargs = explode ( ';', $args [ 0 ] );
+
+                if ( isset ( $this -> vars [ $aargs [ 0 ] ] ) && !empty ( $this -> vars [ $aargs [ 0 ] ] ) )
+                {
+                    $this -> vars [ '$'. $aargs [ 0 ] ] = $this -> vars [ $aargs [ 0 ] ];
+                }
+                else
+                {
+                    $this -> vars [ '$'. $aargs [ 0 ] ] = common::get_param ( $aargs [ 1 ], '' );
+                }
+            }
+        }
         elseif ( $cmd == 'print' || $cmd == 'return' )
         {
-            $result = isset ( $this -> vars [ $args [ 0 ] ] ) ? $this -> vars [ $args [ 0 ] ] : false;
+            $result = ( isset ( $args [ 0 ] ) && isset ( $this -> vars [ $args [ 0 ] ] ) ) ? $this -> vars [ $args [ 0 ] ] : false;
 
             if ( !$result && !empty ( $args [ 0 ] ) )
-            { 
+            {
                 $result = $this -> eval_vars ( $args [ 0 ] );
             }
 
@@ -330,7 +369,7 @@ class script
             $ors = explode ( 'or', $args [ 0 ] );
 
             foreach ( $ors as $or )
-            { 
+            {
                 $or = trim ( $or );
 
                 $operator = false;
@@ -345,7 +384,7 @@ class script
                 }
 
                 if ( $operator )
-                { 
+                {
                     $condition = array_map ( 'trim', explode ( $operator, $or, 2 ) );
                 }
                 else
@@ -382,23 +421,23 @@ class script
             }
 
             if ( $cmd == 'if' )
-            { 
+            {
                 $this -> syntax_push_state ( $new_state );
             }
             else
-            { 
+            {
                 $this -> syntax_set_state ( $new_state );
             }
         }
         elseif ( $cmd == 'else' )
         {
             if ( $__state == self::XT_SYNTAX_IF_FALSE )
-            { 
+            {
                 $this -> syntax_set_state ( self::XT_SYNTAX_IF_FALSE_ELSE );
                 return '';
-            } 
+            }
             elseif ( $__state == self::XT_SYNTAX_IF_FALSE_ELSE )
-            { 
+            {
                 $this -> syntax_set_state ( self::XT_SYNTAX_IF_SKIP );
                 return '';
             }
@@ -418,14 +457,37 @@ class script
             if ( isset ( $args [ 0 ] ) && !empty ( $args [ 0 ] ) && strpos ( $args [ 0 ], '@' ) === 0 )
             {
                 $limit = 10000;
-                while ( --$limit )
-                {
-                    prev ( $this -> cmd_list );
-                    $line = current ( $this -> cmd_list );
 
-                    if ( trim ( $line ) == $args [ 0 ] )
+                $needed_index = $this -> get_index ( $args [ 0 ] );
+
+                if ( $needed_index !== false )
+                {
+                    $current_index = key ( $this -> cmd_list );
+                    if ( $needed_index > $current_index )
                     {
-                        break;
+                        while ( --$limit )
+                        {
+                            next ( $this -> cmd_list );
+                            $key = key ( $this -> cmd_list );
+
+                            if ( $key == $needed_index )
+                            {
+                                break;
+                            }
+                        }
+                    }
+                    elseif ( $needed_index < $current_index )
+                    {
+                        while ( --$limit )
+                        {
+                            prev ( $this -> cmd_list );
+                            $key = key ( $this -> cmd_list );
+
+                            if ( $key == $needed_index )
+                            {
+                                break;
+                            }
+                        }
                     }
                 }
             }
@@ -437,14 +499,14 @@ class script
             if ( method_exists ( $this, '__'. $function ) )
             {
                 $result = 'XtScript Error: Trying to overload native `'. $function .'` function.';
-            
+
                 $this -> syntax_push_state ( self::XT_SYNTAX_FUNCTION_IGNORE );
             }
             else
             {
                 $this -> syntax_push_state ( self::XT_SYNTAX_FUNCTION );
                 $this -> xt_syntax_functions [ $function ] = array ( 'args' => $args, 'code' => '' );
-            }   
+            }
         }
         elseif ( $cmd == 'include' )
         {
@@ -455,7 +517,7 @@ class script
             $path = $fs -> path ( dirname ( $this -> url ) );
 
             foreach ( $args as $arg )
-            { 
+            {
                 if ( substr ( $arg, -3 ) !== '.xt' )
                 {
                     continue;
@@ -468,15 +530,15 @@ class script
 
                 //Trying to include local file
                 if ( !$p || !isset ( $p [ 'absolute' ] ) )
-                { 
+                {
                     //obsolute url
                     if ( strpos ( $arg, '/' ) === 0 )
-                    { 
+                    {
                         $file = realpath ( $domain_path [ 'absolute' ] .'/'. $arg );
                     }
                     //relative url
                     else
-                    { 
+                    {
                         $file = realpath ( $path [ 'absolute' ] .'/'. $arg );
                     }
 
@@ -487,14 +549,14 @@ class script
                 }
                 //Trying to include other user file
                 else
-                { 
+                {
                     $functions_prefix = substr ( $arg, 0, strpos ( $arg, '/' ) );
                     $check_owner = true;
                     $file = realpath ( $p [ 'absolute' ] );
                 }
 
                 if ( $file )
-                { 
+                {
                     $contents = file_get_contents ( $file );
 
                     $cfg = preg_split ( '#\r?\n#', $contents, 2 );
@@ -519,11 +581,11 @@ class script
                     $functions = array ();
 
                     if ( sizeof ( $_POST ) > 0 )
-                    { 
+                    {
                         $vars = array_merge ( $_GET, $_POST );
                     }
                     else
-                    { 
+                    {
                         $vars = $_GET;
                     }
 
@@ -535,7 +597,7 @@ class script
                     if ( sizeof ( $functions ) > 0 )
                     {
                         foreach ( $functions as $function => $code )
-                        { 
+                        {
                             $this -> xt_syntax_functions [ $functions_prefix .'@'. $function ] = $code;
                         }
                     }
@@ -543,7 +605,7 @@ class script
                     foreach ( $vars as $key => $var )
                     {
                         if ( !isset ( $origin_vars [ $key ] ) || $origin_vars [ $key ] != $var )
-                        { 
+                        {
                             $this -> vars [ $functions_prefix .'@'. $key ] = $var;
                         }
                     }
@@ -562,7 +624,7 @@ class script
         $args [ 0 ] = $this -> eval_vars ( $args [ 0 ] );
 
         if ( isset ( $args [ 1 ] ) )
-        { 
+        {
             $args [ 1 ] = $this -> eval_vars ( $args [ 1 ] );
         }
 
@@ -584,31 +646,31 @@ class script
                 return ( bool ) ( $arg1 > $arg2 );
             }
             elseif ( $operator === '<' )
-            { 
+            {
                 return ( bool ) ( $arg1 < $arg2 );
             }
             elseif ( $operator === '==' )
-            { 
+            {
                 return ( bool ) ( $arg1 == $arg2 );
             }
             elseif ( $operator === '===' )
-            { 
+            {
                 return ( bool ) ( $arg1 == $arg2 );
             }
             elseif ( $operator === '!=' )
-            { 
+            {
                 return ( bool ) ( $arg1 != $arg2 );
             }
             elseif ( $operator === '!==' )
-            { 
+            {
                 return ( bool ) ( $arg1 !== $arg2 );
             }
             elseif ( $operator === '>=' )
-            { 
+            {
                 return ( bool ) ( $arg1 >= $arg2 );
             }
             elseif ( $operator === '<=' )
-            { 
+            {
                 return ( bool ) ( $arg1 <= $arg2 );
             }
         }
@@ -617,15 +679,28 @@ class script
     }
 
     private function eval_vars ( $result )
-    { 
+    {
         $result = str_replace ( array ( '\$', '\(', '\)' ), array ( '&#36;', '&#40;', '&#41;' ), $result );
 
         if ( strpos ( $result, '$' ) !== false )
         {
+            preg_match_all ( '#[\w\.]*?\@\$\w+#', $result, $vars );
+
+            if ( sizeof ( $vars ) > 0 )
+            {
+                foreach ( $vars [ 0 ] as $var )
+                {
+                    if ( isset ( $this -> vars [ $var ] ) )
+                    {
+                        $result = preg_replace ( '#'. preg_quote ( $var, '#' ) .'#', $this -> vars [ $var ], $result, 1 );
+                    }
+                }
+            }
+
             preg_match_all ( '#\$\w+#', $result, $vars );
 
             if ( sizeof ( $vars ) > 0 )
-            { 
+            {
                 foreach ( $vars [ 0 ] as $var )
                 {
                     $res = isset ( $this -> vars [ $var ] ) ? $this -> vars [ $var ] : '';
@@ -635,7 +710,7 @@ class script
         }
 
         if ( strpos ( $result, '(' ) !== false && strpos ( $result, ')' ) !== false )
-        { 
+        {
             preg_match_all ( '#\(.+?\)#', $result, $matches );
 
             if ( sizeof ( $matches ) > 0 )
@@ -644,8 +719,8 @@ class script
                 {
                     $res = $this -> eval_math ( substr ( $match, 1, -1 ) );
 
-                    if ( $res )
-                    { 
+                    if ( $res !== false )
+                    {
                         $result = preg_replace ( '#'. preg_quote ( $match, '#' ) .'#', $res, $result, 1 );
                     }
                 }
@@ -683,18 +758,18 @@ class script
         $splits = preg_split ( '(\\'. implode ( '|\\', $operators ) .')', $code, -1, PREG_SPLIT_OFFSET_CAPTURE );
 
         foreach ( $splits as $split )
-        { 
+        {
             if ( !$init )
             {
                 $init = true;
                 $return = $split [ 0 ];
 
                 continue;
-            } 
+            }
             else
             {
                 $op = substr ( $code, ( $split [ 1 ]-1 ), 1 );
-                
+
                 if ( $op == '+' )
                 {
                     $return += $split [ 0 ];
@@ -706,7 +781,7 @@ class script
                 elseif ( $op == '/' )
                 {
                     if ( $split [ 0 ] != 0 )
-                    { 
+                    {
                         $return /= $split [ 0 ];
                     }
                 }
@@ -715,9 +790,9 @@ class script
                     $return *= $split [ 0 ];
                 }
                 elseif ( $op == '%' )
-                { 
+                {
                     if ( $split [ 0 ] != 0 )
-                    { 
+                    {
                         $return %= $split [ 0 ];
                     }
                 }
@@ -728,7 +803,7 @@ class script
     }
 
     public function eval_function ( $function, $args )
-    { 
+    {
         $method = '__'. $function;
         $result = '';
 
@@ -745,7 +820,7 @@ class script
                         require ( $this -> xt_syntax_plugins_directory .'xt_'. $class .'.php' );
 
                         if ( class_exists ( 'xt_'. $class ) )
-                        { 
+                        {
                             $this -> xt_syntax_plugins [ $class ] = true;
 
                             if ( method_exists ( 'xt_'. $class, '__setup' ) && is_callable ( array ( 'xt_'. $class, '__setup' ) ) )
@@ -775,13 +850,13 @@ class script
             $result = call_user_func ( array ( $this, $method ), $args );
         }
         else
-        { 
+        {
             if ( !isset ( $this -> xt_syntax_functions [ $function ][ 'code' ] ) )
-            { 
+            {
                 $result = 'XtScript Error: Undefined function `'. $function .'`';
             }
             else
-            { 
+            {
                 $arguments = $this -> xt_syntax_functions [ $function ][ 'args' ];
 
                 foreach ( $arguments as $key => $val )
@@ -794,7 +869,7 @@ class script
 
                 $vars = array_merge ( $this -> vars, $arguments );
                 $obj = new script ( $this -> url, $this -> info, $vars, $this -> xt_syntax_functions );
-                
+
                 $result = $obj -> eval_syntax ( $this -> xt_syntax_functions [ $function ][ 'code' ], $this -> version );
             }
         }
@@ -803,28 +878,28 @@ class script
     }
 
     private function syntax_push_state ( $state )
-    { 
+    {
         array_push ( $this -> xt_syntax_state, $state );
     }
 
     private function syntax_pop_state ()
-    { 
+    {
         return array_pop ( $this -> xt_syntax_state );
     }
 
     private function syntax_set_state ( $state )
-    { 
+    {
         $this -> syntax_pop_state ();
         $this -> syntax_push_state ( $state );
     }
 
     private function syntax_get_state ()
-    { 
-        return end ( $this -> xt_syntax_state ); 
+    {
+        return end ( $this -> xt_syntax_state );
     }
 
     private function __dump_vars ( $args )
-    { 
+    {
         $result = null;
 
         $tmp = $this -> vars;
@@ -856,6 +931,18 @@ class script
     private function __execution_time ( $args )
     {
         return number_format ( ( ( microtime ( true ) - self::$started ) / 1000 ) , 6, '.', '' ) .'s.';
+    }
+
+    private function __get_variable ( $args )
+    {
+        if ( !isset ( $args [ '$name' ] ) )
+        {
+            return '';
+        }
+
+        $args [ '$name' ] = str_replace ( '&#36;', '$', $args [ '$name' ] );
+
+        return isset ( $this -> vars [ $args [ '$name' ] ] ) ? $this -> vars [ $args [ '$name' ] ] : '';
     }
 
     private function __urlencode ( $args )
@@ -904,7 +991,7 @@ class script
     }
 
     private function __file_get_contents ( $args )
-    { 
+    {
         if ( !isset ( $args [ '$file' ] ) )
         {
             return '';
@@ -923,7 +1010,7 @@ class script
 
         //TODO: remove realpath checks
         if ( $file && strpos ( $file, realpath ( $domain_path [ 'absolute' ] ) ) === 0 )
-        { 
+        {
             $return = file_get_contents ( $file );
 
             if ( isset ( $args [ '$html_safe' ] ) && $args [ '$html_safe' ] )
@@ -1034,22 +1121,22 @@ class script
         }
 
         if ( !function_exists ( 'hex2bin' ) )
-        { 
+        {
             $len = strlen ( $args [ '$val' ] );
             $bin = '';
             $i = 0;
 
-            do 
+            do
             {
                 $bin .= chr ( hexdec ( $args [ '$val' ]{$i} . $args [ '$val' ]{( $i + 1 )} ) );
                 $i += 2;
-            } 
+            }
             while ( $i < $len );
 
             return $bin;
         }
         else
-        { 
+        {
             return hex2bin ( $args [ '$val' ] );
         }
     }
@@ -1213,7 +1300,7 @@ class script
     }
 
     private function __str_pad ( $args )
-    { 
+    {
         if ( !isset ( $args [ '$val' ] ) || !isset ( $args [ '$pad_length' ] ) )
         {
             return '';
@@ -1230,7 +1317,7 @@ class script
     }
 
     private function __str_repeat ( $args )
-    { 
+    {
         if ( !isset ( $args [ '$val' ] ) || !isset ( $args [ '$multiplier' ] ) )
         {
             return '';
@@ -1240,7 +1327,7 @@ class script
     }
 
     private function __str_shuffle ( $args )
-    { 
+    {
         if ( !isset ( $args [ '$val' ] ) )
         {
             return '';
@@ -1250,7 +1337,7 @@ class script
     }
 
     private function __strip_tags ( $args )
-    { 
+    {
         if ( !isset ( $args [ '$val' ] ) )
         {
             return '';
@@ -1260,7 +1347,7 @@ class script
     }
 
     private function __addslashes ( $args )
-    { 
+    {
         if ( !isset ( $args [ '$val' ] ) )
         {
             return '';
@@ -1270,7 +1357,7 @@ class script
     }
 
     private function __stripslashes ( $args )
-    { 
+    {
         if ( !isset ( $args [ '$val' ] ) )
         {
             return '';
@@ -1280,7 +1367,7 @@ class script
     }
 
     private function __strpos ( $args )
-    { 
+    {
         if ( !isset ( $args [ '$haystack' ] ) || !isset ( $args [ '$needle' ] ) )
         {
             return '';
@@ -1297,7 +1384,7 @@ class script
     }
 
     private function __strrpos ( $args )
-    { 
+    {
         if ( !isset ( $args [ '$haystack' ] ) || !isset ( $args [ '$needle' ] ) )
         {
             return '';
@@ -1314,7 +1401,7 @@ class script
     }
 
     private function __stripos ( $args )
-    { 
+    {
         if ( !isset ( $args [ '$haystack' ] ) || !isset ( $args [ '$needle' ] ) )
         {
             return '';
@@ -1331,7 +1418,7 @@ class script
     }
 
     private function __strripos ( $args )
-    { 
+    {
         if ( !isset ( $args [ '$haystack' ] ) || !isset ( $args [ '$needle' ] ) )
         {
             return '';
@@ -1348,8 +1435,8 @@ class script
     }
 
     private function __strstr ( $args )
-    { 
-        if ( !isset ( $args [ '$haystack' ] ) || !isset ( $args [ '$needle' ] ) )
+    {
+        if ( !isset ( $args [ '$haystack' ] ) || !isset ( $args [ '$needle' ] ) || empty ( $args [ '$needle' ] ) )
         {
             return '';
         }
@@ -1358,8 +1445,8 @@ class script
     }
 
     private function __stristr ( $args )
-    { 
-        if ( !isset ( $args [ '$haystack' ] ) || !isset ( $args [ '$needle' ] ) )
+    {
+        if ( !isset ( $args [ '$haystack' ] ) || !isset ( $args [ '$needle' ] ) || empty ( $args [ '$needle' ] ) )
         {
             return '';
         }
@@ -1368,7 +1455,7 @@ class script
     }
 
     private function __strrchr ( $args )
-    { 
+    {
         if ( !isset ( $args [ '$haystack' ] ) || !isset ( $args [ '$needle' ] ) )
         {
             return '';
@@ -1378,7 +1465,7 @@ class script
     }
 
     private function __strrev ( $args )
-    { 
+    {
         if ( !isset ( $args [ '$val' ] ) )
         {
             return '';
@@ -1388,7 +1475,7 @@ class script
     }
 
     private function __substr ( $args )
-    { 
+    {
         if ( !isset ( $args [ '$val' ] ) || !isset ( $args [ '$start' ] ) )
         {
             return '';
@@ -1397,9 +1484,10 @@ class script
         if ( isset ( $args [ '$length' ] ) )
         {
             $args [ '$length' ] = ( int ) $args [ '$length' ];
+            return substr ( ( string ) $args [ '$val' ], ( int ) $args [ '$start' ], $args [ '$length' ] );
         }
 
-        return substr ( ( string ) $args [ '$val' ], ( int ) $args [ '$start' ], common::get_param ( $args [ '$length' ], null ) );
+        return substr ( ( string ) $args [ '$val' ], ( int ) $args [ '$start' ] );
     }
 
     private function __strlen ( $args )
@@ -1492,9 +1580,9 @@ class script
 }
 
 class SyntaxException extends Exception
-{ 
+{
     public function errorMessage ( $syntax, $e )
-    { 
+    {
         $line = key ( $syntax -> cmd_list ) - 1;
         return 'XtScript Error on line '. $line .': <br />'. $syntax -> cmd_list [ $line ];
     }
